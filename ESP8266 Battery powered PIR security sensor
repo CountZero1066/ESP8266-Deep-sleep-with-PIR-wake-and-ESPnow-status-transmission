@@ -1,0 +1,83 @@
+//ESP8266 Deep Sleep with PIR wakeup & ESPNow broadcast V0.1
+//20-12-2021
+//Robert James Hastings
+//117757785@umail.ucc.ie
+
+
+#include <ESP8266WiFi.h>
+#include <espnow.h>
+#include <Ticker.h>
+
+Ticker ticker;
+
+//------------------------------------------------------------------------------------------- 
+uint8_t broadcastAddress[] = {0xAC,0x67,0xB2,0x05,0x03,0x9c}; //Board mounted ESP32 i.e. System Central Node
+String esp8266_outbound;
+String unit_mac;
+
+//------------------------------------------------------------------------------------------- 
+void setup() {
+  
+  int start = millis();
+  pinMode(BUILTIN_LED, OUTPUT);
+  ticker.attach(0.5, tick);  
+  Serial.begin(115200);
+  //restart reason
+  Serial.println(""); Serial.print("Reason startup :");Serial.println(ESP.getResetReason());
+    
+  WiFi.mode(WIFI_STA);// Set device as a Wi-Fi Station
+  WiFi.disconnect();
+  if (esp_now_init() != 0) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+  
+  esp_now_set_self_role(ESP_NOW_ROLE_COMBO);// Set ESP-NOW Role
+  esp_now_register_send_cb(OnDataSent); 
+  esp_now_add_peer(broadcastAddress, ESP_NOW_ROLE_COMBO, 1, NULL, 0); // Register peer 
+
+    Sendmessage();
+  
+  Serial.println("Waking time: ");Serial.print(millis()-start);Serial.println("ms");
+  ticker.detach();
+  digitalWrite(BUILTIN_LED, LOW);
+  Serial.println("Go to deep sleep");
+  
+  ESP.deepSleep(0);
+}
+
+// Callback when data is sent
+//-------------------------------------------------------------------------------------------
+void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
+  
+  Serial.print("Last Packet Send Status: ");
+  if (sendStatus == 0){
+    Serial.println("Delivery success");
+  }
+  else{
+    Serial.println("Delivery fail");
+  }
+}
+
+//-------------------------------------------------------------------------------------------
+void Sendmessage(){
+  
+ unit_mac = WiFi.macAddress();
+ esp8266_outbound= "Device " + unit_mac + " has detected motion";
+ uint8_t *buff = (uint8_t*) esp8266_outbound.c_str();
+ size_t sizeBuff = sizeof(buff) * esp8266_outbound.length();
+ esp_now_send(broadcastAddress, buff, sizeBuff);
+ 
+}
+
+//-------------------------------------------------------------------------------------------
+void tick()
+{
+  //toggle state
+  int state = digitalRead(BUILTIN_LED);  // get the current state of GPIO1 pin
+  digitalWrite(BUILTIN_LED, !state);     // set pin to the opposite state
+}
+
+//-------------------------------------------------------------------------------------------
+void loop() {
+}
