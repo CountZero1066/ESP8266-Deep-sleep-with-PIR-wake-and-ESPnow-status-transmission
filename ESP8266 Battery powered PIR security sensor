@@ -1,7 +1,5 @@
 //ESP8266 Deep Sleep with PIR wakeup & ESPNow broadcast V0.1
-//20-12-2021
 //Robert James Hastings
-//117757785@umail.ucc.ie
 
 
 #include <ESP8266WiFi.h>
